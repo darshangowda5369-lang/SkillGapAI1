@@ -1,0 +1,203 @@
+@import "tailwindcss";
+
+@theme {
+  --color-cyber-dark: #05050d;
+  --color-cyber-card: rgba(13, 13, 29, 0.65);
+  --color-cyber-border: rgba(99, 102, 241, 0.15);
+  --color-cyber-border-glow: rgba(16, 185, 129, 0.3);
+  --color-cyber-green: #10b981;
+  --color-cyber-blue: #3b82f6;
+  --color-cyber-purple: #8b5cf6;
+  --color-cyber-pink: #ec4899;
+  --color-cyber-yellow: #f59e0b;
+}
+
+:root {
+  font-family: 'Outfit', 'Inter', system-ui, -apple-system, sans-serif;
+  color-scheme: dark;
+  background-color: var(--color-cyber-dark);
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background: radial-gradient(circle at 50% 0%, rgba(30, 27, 75, 0.4) 0%, rgba(5, 5, 13, 1) 75%);
+  color: #e2e8f0;
+  overflow-x: hidden;
+}
+
+/* Custom Scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: rgba(5, 5, 13, 0.5);
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(99, 102, 241, 0.3);
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(16, 185, 129, 0.5);
+}
+
+/* Cyber Glass Card Styles */
+.glass-panel {
+  background: var(--color-cyber-card);
+  backdrop-filter: blur(12px) saturate(180%);
+  -webkit-backdrop-filter: blur(12px) saturate(180%);
+  border: 1px solid var(--color-cyber-border);
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.glass-panel:hover {
+  border-color: rgba(99, 102, 241, 0.3);
+  box-shadow: 0 8px 32px 0 rgba(99, 102, 241, 0.08);
+}
+
+.glass-panel-glow {
+  background: var(--color-cyber-card);
+  backdrop-filter: blur(12px) saturate(180%);
+  border: 1px solid var(--color-cyber-border-glow);
+  box-shadow: 0 0 15px rgba(16, 185, 129, 0.1);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.glass-panel-glow:hover {
+  box-shadow: 0 0 25px rgba(16, 185, 129, 0.25);
+  border-color: var(--color-cyber-green);
+}
+
+/* Cyber text effects */
+.neon-text-green {
+  text-shadow: 0 0 10px rgba(16, 185, 129, 0.5), 0 0 20px rgba(16, 185, 129, 0.2);
+}
+
+.neon-text-blue {
+  text-shadow: 0 0 10px rgba(59, 130, 246, 0.5), 0 0 20px rgba(59, 130, 246, 0.2);
+}
+
+.neon-text-purple {
+  text-shadow: 0 0 10px rgba(139, 92, 246, 0.5), 0 0 20px rgba(139, 92, 246, 0.2);
+}
+
+/* Glowing buttons */
+.btn-cyber {
+  position: relative;
+  overflow: hidden;
+  transition: all 0.3s ease;
+  border: 1px solid rgba(16, 185, 129, 0.4);
+  background: rgba(16, 185, 129, 0.1);
+}
+
+.btn-cyber:hover {
+  background: var(--color-cyber-green);
+  color: #05050d;
+  box-shadow: 0 0 15px rgba(16, 185, 129, 0.6);
+  border-color: var(--color-cyber-green);
+  transform: translateY(-1px);
+}
+
+.btn-cyber-blue {
+  position: relative;
+  overflow: hidden;
+  transition: all 0.3s ease;
+  border: 1px solid rgba(59, 130, 246, 0.4);
+  background: rgba(59, 130, 246, 0.1);
+}
+
+.btn-cyber-blue:hover {
+  background: var(--color-cyber-blue);
+  color: white;
+  box-shadow: 0 0 15px rgba(59, 130, 246, 0.6);
+  border-color: var(--color-cyber-blue);
+  transform: translateY(-1px);
+}
+
+.btn-cyber-secondary {
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.03);
+  transition: all 0.3s ease;
+}
+
+.btn-cyber-secondary:hover {
+  border-color: rgba(255, 255, 255, 0.25);
+  background: rgba(255, 255, 255, 0.08);
+}
+
+/* Grid overlay background */
+.grid-bg {
+  background-image: 
+    linear-gradient(rgba(18, 16, 35, 0.6) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(18, 16, 35, 0.6) 1px, transparent 1px);
+  background-size: 40px 40px;
+  background-position: center;
+}
+
+/* Radar & Circular progress custom overrides */
+.recharts-polar-grid-angle line,
+.recharts-polar-grid-concentric path {
+  stroke: rgba(255, 255, 255, 0.07) !important;
+}
+
+.recharts-radar-polygon {
+  fill-opacity: 0.2;
+}
+
+/* Cyber Pulse Animation */
+@keyframes cyber-pulse {
+  0%, 100% {
+    opacity: 0.4;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.8;
+    transform: scale(1.05);
+  }
+}
+
+.animate-pulse-cyber {
+  animation: cyber-pulse 3s infinite ease-in-out;
+}
+
+/* UI Transition Animations */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slideDown {
+  from { opacity: 0; transform: translateY(-10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes scaleIn {
+  from { opacity: 0; transform: scale(0.97); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-slide-down {
+  animation: slideDown 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-scale-in {
+  animation: scaleIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* Toast Animations */
+@keyframes toastSlideIn {
+  from { transform: translateX(120%); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
+
+.animate-toast-slide-in {
+  animation: toastSlideIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+
