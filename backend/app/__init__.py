@@ -1,11 +1,17 @@
 import os
-from flask import Flask
+from flask import Flask, send_from_directory
 from flask_cors import CORS
 from app.config import Config
 from app.database import db
 
 def create_app(config_class=Config):
-    app = Flask(__name__)
+    # Resolve path to the frontend build output
+    frontend_dist = os.path.join(
+        os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
+        'frontend', 'dist'
+    )
+
+    app = Flask(__name__, static_folder=frontend_dist, static_url_path='')
     app.config.from_object(config_class)
 
     # In production, restrict CORS to the deployed Vercel frontend URL.
@@ -30,6 +36,19 @@ def create_app(config_class=Config):
     app.register_blueprint(roadmap_bp, url_prefix='/api/roadmap')
     app.register_blueprint(quiz_bp, url_prefix='/api/quiz')
     app.register_blueprint(progress_bp, url_prefix='/api/progress')
+
+    # ── Serve React frontend (SPA) ─────────────────────────────
+    # In production / demo mode, serve the built React app.
+    # All non-API routes fall through to index.html for client-side routing.
+    @app.route('/', defaults={'path': ''})
+    @app.route('/<path:path>')
+    def serve_frontend(path):
+        # If the requested file exists in dist/, serve it directly
+        full_path = os.path.join(frontend_dist, path)
+        if path and os.path.isfile(full_path):
+            return send_from_directory(frontend_dist, path)
+        # Otherwise return index.html (React handles routing)
+        return send_from_directory(frontend_dist, 'index.html')
     
     # Create DB tables and seed initial user
     with app.app_context():
@@ -48,3 +67,4 @@ def create_app(config_class=Config):
             print("Default user profile created successfully.")
             
     return app
+
