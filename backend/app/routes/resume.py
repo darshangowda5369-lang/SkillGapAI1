@@ -5,6 +5,7 @@ from werkzeug.utils import secure_filename
 from app.models import User, Resume
 from app.database import db
 from app.services import PDFService, GeminiService
+from app.routes.auth import get_authenticated_user
 
 resume_bp = Blueprint('resume', __name__)
 
@@ -19,10 +20,9 @@ def upload_resume():
     if not os.path.exists(upload_dir):
         os.makedirs(upload_dir)
         
-    # Get active user
-    user = User.query.first()
+    user = get_authenticated_user()
     if not user:
-        return jsonify({'status': 'error', 'message': 'User profile not found. Please initialize profile first.'}), 400
+        return jsonify({'status': 'error', 'message': 'Unauthorized'}), 401
 
     if 'file' not in request.files:
         return jsonify({'status': 'error', 'message': 'No file part in request'}), 400
@@ -111,9 +111,9 @@ def upload_resume():
 
 @resume_bp.route('/latest', methods=['GET'])
 def get_latest_resume():
-    user = User.query.first()
+    user = get_authenticated_user()
     if not user:
-        return jsonify({'status': 'error', 'message': 'User profile not found.'}), 400
+        return jsonify({'status': 'error', 'message': 'Unauthorized'}), 401
         
     resume = Resume.query.filter_by(user_id=user.id).order_by(Resume.uploaded_at.desc()).first()
     if not resume:
@@ -129,9 +129,9 @@ def get_latest_resume():
 
 @resume_bp.route('/demo-seed', methods=['POST'])
 def seed_demo_resume():
-    user = User.query.first()
+    user = get_authenticated_user()
     if not user:
-        return jsonify({'status': 'error', 'message': 'User profile not found.'}), 400
+        return jsonify({'status': 'error', 'message': 'Unauthorized'}), 401
         
     data = request.get_json() or {}
     profile_type = data.get('profile_type', 'frontend')

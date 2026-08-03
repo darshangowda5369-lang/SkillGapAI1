@@ -66,13 +66,17 @@ export default function Dashboard({ setActivePage, setSharedState }) {
     readiness_score
   } = stats || {};
 
+  const normalizedRoadmapProgress = typeof roadmap_progress === 'number' ? roadmap_progress : 0;
+  const isRoadmapComplete = normalizedRoadmapProgress >= 100;
+  const displayedReadinessScore = isRoadmapComplete ? 100 : Math.round(readiness_score || 0);
+
   // Formulate data for Radar Chart
   const totalSkills = skills_matched_count + skills_missing_count;
   const radarData = [
     { subject: 'Skills Matched', A: totalSkills > 0 ? (skills_matched_count / totalSkills) * 100 : 0, fullMark: 100 },
-    { subject: 'Roadmap Progress', A: roadmap_progress, fullMark: 100 },
+    { subject: 'Roadmap Progress', A: normalizedRoadmapProgress, fullMark: 100 },
     { subject: 'Quiz Performance', A: quizzes_taken > 0 ? quiz_average : 0, fullMark: 100 },
-    { subject: 'Readiness Score', A: readiness_score, fullMark: 100 },
+    { subject: 'Readiness Score', A: displayedReadinessScore, fullMark: 100 },
   ];
 
   const barData = [
@@ -168,7 +172,13 @@ export default function Dashboard({ setActivePage, setSharedState }) {
         {/* Career Readiness Score Radial Panel */}
         <div className="glass-panel p-6 rounded-lg flex flex-col items-center justify-center text-center relative overflow-hidden lg:col-span-1 border-emerald-500/15">
           <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/5 rounded-full blur-2xl -z-10"></div>
-          <h2 className="text-sm font-mono text-gray-400 uppercase tracking-widest mb-6">Career Readiness</h2>
+          <div className="flex flex-col items-center gap-2 mb-6">
+            <h2 className="text-sm font-mono text-gray-400 uppercase tracking-widest">Career Readiness</h2>
+            <span className="inline-flex items-center gap-2 rounded-full border border-emerald-500/20 bg-emerald-950/20 px-3 py-1 text-[10px] text-emerald-300 font-mono uppercase tracking-[0.24em]">
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-400"></span>
+              {isRoadmapComplete ? '100% Completed' : `${Math.round(normalizedRoadmapProgress)}% Completed`}
+            </span>
+          </div>
           
           <div className="relative flex items-center justify-center w-40 h-40">
             {/* SVG Circle Progress */}
@@ -189,18 +199,22 @@ export default function Dashboard({ setActivePage, setSharedState }) {
                 strokeWidth="10"
                 fill="transparent"
                 strokeDasharray={440}
-                strokeDashoffset={440 - (440 * (readiness_score || 0)) / 100}
+                strokeDashoffset={440 - (440 * displayedReadinessScore) / 100}
                 strokeLinecap="round"
                 style={{ transition: 'stroke-dashoffset 1s ease-in-out' }}
               />
             </svg>
             <div className="absolute flex flex-col items-center justify-center">
-              <span className="text-4xl font-extrabold neon-text-green">{readiness_score || 0}%</span>
+              <span className="text-4xl font-extrabold neon-text-green">{displayedReadinessScore}%</span>
               <span className="text-xs text-gray-500 font-mono mt-1">READINESS</span>
             </div>
           </div>
 
-          <div className="mt-6 space-y-1">
+          <div className="mt-6 space-y-2">
+            <div className="inline-flex items-center gap-2 rounded-full border border-emerald-500/20 bg-emerald-950/20 px-3 py-1 text-[10px] text-emerald-300 font-mono uppercase tracking-[0.24em]">
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-400"></span>
+              {isRoadmapComplete ? '100% Completed' : `${Math.round(normalizedRoadmapProgress)}% Completed`}
+            </div>
             <p className="text-sm text-gray-400">
               {readiness_score >= 80 
                 ? 'Excellent match! You are battle-ready.' 

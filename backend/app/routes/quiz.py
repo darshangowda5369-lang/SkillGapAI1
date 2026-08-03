@@ -4,14 +4,15 @@ from flask import Blueprint, jsonify, request
 from app.models import User, Quiz, Goal
 from app.database import db
 from app.services import GeminiService, CareerReadinessAnalyzer
+from app.routes.auth import get_authenticated_user
 
 quiz_bp = Blueprint('quiz', __name__)
 
 @quiz_bp.route('/generate', methods=['POST'])
 def generate_quiz():
-    user = User.query.first()
+    user = get_authenticated_user()
     if not user:
-        return jsonify({'status': 'error', 'message': 'User profile not found.'}), 400
+        return jsonify({'status': 'error', 'message': 'Unauthorized'}), 401
         
     data = request.get_json() or {}
     skill_name = data.get('skill_name')
@@ -41,9 +42,9 @@ def generate_quiz():
 
 @quiz_bp.route('/submit', methods=['POST'])
 def submit_quiz():
-    user = User.query.first()
+    user = get_authenticated_user()
     if not user:
-        return jsonify({'status': 'error', 'message': 'User profile not found.'}), 400
+        return jsonify({'status': 'error', 'message': 'Unauthorized'}), 401
         
     data = request.get_json() or {}
     quiz_id = data.get('quiz_id')
@@ -114,9 +115,9 @@ def submit_quiz():
 
 @quiz_bp.route('/history', methods=['GET'])
 def get_quiz_history():
-    user = User.query.first()
+    user = get_authenticated_user()
     if not user:
-        return jsonify({'status': 'error', 'message': 'User profile not found.'}), 400
+        return jsonify({'status': 'error', 'message': 'Unauthorized'}), 401
         
     quizzes = Quiz.query.filter_by(user_id=user.id).filter(Quiz.score.isnot(None)).order_by(Quiz.completed_at.desc()).all()
     return jsonify({

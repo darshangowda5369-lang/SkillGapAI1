@@ -41,7 +41,10 @@ export default function RoadmapView({ setActivePage, setSharedState }) {
       setToggling(true);
       const res = await progressAPI.toggleStep(data.roadmap_id, stepKey, !currentStatus);
       if (res.status === 'success') {
-        // Update local state without refetching fully
+        const nextProgress = typeof res.data?.roadmap_progress === 'number'
+          ? res.data.roadmap_progress
+          : 100;
+
         setData((prev) => {
           const updatedRoadmap = prev.roadmap.map((step) => {
             if (step.step_key === stepKey) {
@@ -49,12 +52,35 @@ export default function RoadmapView({ setActivePage, setSharedState }) {
             }
             return step;
           });
+          const completedSteps = updatedRoadmap.filter((step) => step.completed).length;
+          const totalSteps = updatedRoadmap.length || 0;
+          const computedProgress = totalSteps > 0 ? Math.round((completedSteps / totalSteps) * 100) : 0;
+          const normalizedProgress = completedSteps >= totalSteps ? 100 : computedProgress;
+
           return {
             ...prev,
             roadmap: updatedRoadmap,
-            readiness_score: res.data.new_readiness_score
+            readiness_score: res.data.new_readiness_score,
+            roadmap_progress: normalizedProgress,
+            certificate_download_url: res.data.certificate_download_url || prev.certificate_download_url,
+            certificate_id: res.data.certificate_id || prev.certificate_id,
           };
         });
+
+        setSharedState((prev) => ({
+          ...prev,
+          readiness_score: res.data.new_readiness_score,
+          roadmap_progress: nextProgress,
+          certificate: res.data?.certificate_download_url ? {
+            download_url: res.data.certificate_download_url,
+            certificate_id: res.data.certificate_id,
+            completion_date: new Date().toLocaleDateString(),
+          } : prev?.certificate,
+        }));
+
+        if (nextProgress >= 100 && res.data?.certificate_download_url) {
+          setActivePage('certificate');
+        }
       }
     } catch (err) {
       console.error(err);
@@ -62,6 +88,14 @@ export default function RoadmapView({ setActivePage, setSharedState }) {
       setToggling(false);
     }
   };
+
+  const completedSteps = data?.roadmap?.filter((step) => step.completed).length || 0;
+  const totalSteps = data?.roadmap?.length || 0;
+  const computedProgress = totalSteps > 0 ? Math.round((completedSteps / totalSteps) * 100) : 0;
+  const progressDisplay = typeof data?.roadmap_progress === 'number'
+    ? Math.min(100, Math.max(0, data.roadmap_progress))
+    : (completedSteps >= totalSteps ? 100 : computedProgress);
+  const isCertificateUnlocked = progressDisplay >= 100 || completedSteps >= totalSteps;
 
   if (loading) {
     return (
@@ -118,12 +152,28 @@ export default function RoadmapView({ setActivePage, setSharedState }) {
           </p>
         </div>
         
-        {/* Readiness Score Status */}
-        <div className="flex items-center space-x-3 px-4 py-2 rounded-lg bg-slate-900/50 border border-slate-800">
-          <Award className="w-5 h-5 text-cyber-green" />
-          <div className="text-left">
-            <p className="text-[10px] text-gray-500 font-mono">CURRENT READINESS</p>
-            <p className="text-sm font-extrabold text-white">{data.readiness_score}%</p>
+        <div className="flex flex-col md:flex-row items-start md:items-center gap-3">
+          <div className="flex items-center space-x-3 px-4 py-2 rounded-lg bg-slate-900/50 border border-slate-800">
+            <Award className="w-5 h-5 text-cyber-green" />
+            <div className="text-left">
+              <p className="text-[10px] text-gray-500 font-mono">CURRENT READINESS</p>
+              <p className="text-sm font-extrabold text-white">{data.readiness_score}%</p>
+            </div>
+          </div>
+
+          <div className="px-4 py-2 rounded-lg bg-slate-900/50 border border-slate-800 min-w-[220px]">
+            <div className="flex items-center justify-between gap-4 mb-2">
+              <p className="text-[10px] text-gray-500 font-mono uppercase tracking-widest">
+                {isCertificateUnlocked ? '100% Completed' : `${progressDisplay}% Completed`}
+              </p>
+              <span className="text-xs text-cyber-green font-mono">{completedSteps}/{totalSteps}</span>
+            </div>
+            <div className="h-2 w-full rounded-full bg-slate-800 overflow-hidden">
+              <div
+                className="h-full rounded-full bg-gradient-to-r from-cyber-green to-emerald-400 transition-all duration-500"
+                style={{ width: `${Math.min(100, progressDisplay)}%` }}
+              />
+            </div>
           </div>
         </div>
       </div>

@@ -3,15 +3,15 @@ from flask import Blueprint, jsonify, request
 from app.models import User, Resume, Goal, Roadmap
 from app.database import db
 from app.services import GeminiService, CareerReadinessAnalyzer
+from app.routes.auth import get_authenticated_user
 
 roadmap_bp = Blueprint('roadmap', __name__)
 
 @roadmap_bp.route('/goals', methods=['GET'])
 def get_goals():
-    # Return some standard presets + any goals the user already set
-    user = User.query.first()
+    user = get_authenticated_user()
     if not user:
-        return jsonify({'status': 'error', 'message': 'User profile not found.'}), 400
+        return jsonify({'status': 'error', 'message': 'Unauthorized'}), 401
         
     user_goals = Goal.query.filter_by(user_id=user.id).order_by(Goal.created_at.desc()).all()
     presets = [
@@ -31,9 +31,9 @@ def get_goals():
 
 @roadmap_bp.route('/generate', methods=['POST'])
 def generate_roadmap():
-    user = User.query.first()
+    user = get_authenticated_user()
     if not user:
-        return jsonify({'status': 'error', 'message': 'User profile not found.'}), 400
+        return jsonify({'status': 'error', 'message': 'Unauthorized'}), 401
         
     data = request.get_json() or {}
     goal_title = data.get('goal_title')
@@ -101,9 +101,9 @@ def generate_roadmap():
 
 @roadmap_bp.route('/active', methods=['GET'])
 def get_active_roadmap():
-    user = User.query.first()
+    user = get_authenticated_user()
     if not user:
-        return jsonify({'status': 'error', 'message': 'User profile not found.'}), 400
+        return jsonify({'status': 'error', 'message': 'Unauthorized'}), 401
         
     active_goal = Goal.query.filter_by(user_id=user.id, is_active=True).first()
     if not active_goal:

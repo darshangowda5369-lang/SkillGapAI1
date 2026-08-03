@@ -1,8 +1,29 @@
 import os
 from flask import Flask, send_from_directory
 from flask_cors import CORS
+from sqlalchemy import inspect, text
 from app.config import Config
 from app.database import db
+
+
+def _ensure_user_table_schema(app):
+    with app.app_context():
+        if db.engine.dialect.name != 'sqlite':
+            return
+
+        inspector = inspect(db.engine)
+        if not inspector.has_table('users'):
+            return
+
+        existing_columns = {column['name'] for column in inspector.get_columns('users')}
+        with db.engine.begin() as connection:
+            if 'full_name' not in existing_columns:
+                connection.execute(text('ALTER TABLE users ADD COLUMN full_name VARCHAR(120)'))
+            if 'password_hash' not in existing_columns:
+                connection.execute(text('ALTER TABLE users ADD COLUMN password_hash VARCHAR(256)'))
+            if 'session_token' not in existing_columns:
+                connection.execute(text('ALTER TABLE users ADD COLUMN session_token VARCHAR(255)'))
+
 
 def create_app(config_class=Config):
     # Resolve path to the frontend build output
@@ -50,21 +71,10 @@ def create_app(config_class=Config):
         # Otherwise return index.html (React handles routing)
         return send_from_directory(frontend_dist, 'index.html')
     
-    # Create DB tables and seed initial user
+    # Create DB tables and normalize any legacy SQLite schema
     with app.app_context():
         db.create_all()
-        
-        # Create a default user profile if none exists
-        from app.models import User
-        if not User.query.first():
-            default_user = User(
-                username="CyberLearner",
-                email="learner@skillgap.ai",
-                readiness_score=0.0
-            )
-            db.session.add(default_user)
-            db.session.commit()
-            print("Default user profile created successfully.")
-            
+        _ensure_user_table_schema(app)
+
     return app
 

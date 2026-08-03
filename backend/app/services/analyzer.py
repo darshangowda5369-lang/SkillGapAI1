@@ -72,7 +72,12 @@ class CareerReadinessAnalyzer:
         # Weighted calculation
         # 60% Skills Match + 30% Progress + 10% Quizzes
         final_score = (base_match_score * 0.6) + (progress_score * 0.3) + (quiz_score * 0.1)
-        
+
+        # If the roadmap is fully complete, keep the reported readiness at 100.0
+        # so the dashboard and certificate unlock flow consistently resolve to full completion.
+        if progress_score >= 100.0:
+            return 100.0
+
         # If user has 100% skills matched and 100% roadmap done, score should be 100% even without quizzes
         # Let's caps score to 100.0 and round to 1 decimal place
         return round(min(max(final_score, 0.0), 100.0), 1)

@@ -5,6 +5,9 @@ import CareerGoal from './pages/CareerGoal';
 import RoadmapView from './pages/RoadmapView';
 import QuizView from './pages/QuizView';
 import Learn from './pages/Learn';
+import LoginPage from './pages/LoginPage';
+import SignupPage from './pages/SignupPage';
+import CertificateView from './pages/CertificateView';
 import { authAPI } from './services/api';
 import { 
   LayoutDashboard, 
@@ -26,6 +29,32 @@ export default function App() {
   const [profile, setProfile] = useState(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [toasts, setToasts] = useState([]);
+  const [authMode, setAuthMode] = useState('login');
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+
+  const sidebarReadinessSource = typeof sharedState?.readiness_score === 'number'
+    ? sharedState.readiness_score
+    : typeof profile?.readiness_score === 'number'
+      ? profile.readiness_score
+      : 0;
+  const isFullRoadmapCompletion = typeof sharedState?.roadmap_progress === 'number'
+    ? sharedState.roadmap_progress >= 100
+    : false;
+  const displayedSidebarReadiness = Math.round(isFullRoadmapCompletion ? 100 : sidebarReadinessSource);
+
+  useEffect(() => {
+    if (typeof sharedState?.readiness_score === 'number' && profile) {
+      setProfile((prev) => {
+        if (!prev || prev.readiness_score === sharedState.readiness_score) {
+          return prev;
+        }
+        return {
+          ...prev,
+          readiness_score: sharedState.readiness_score,
+        };
+      });
+    }
+  }, [sharedState?.readiness_score]);
 
   const showToast = (message, type = 'success') => {
     const id = Date.now();
@@ -35,19 +64,35 @@ export default function App() {
     }, 3500);
   };
 
-  // Fetch user profile on startup and when readiness changes
+  const handleAuthenticated = (user, token) => {
+    setProfile(user);
+    setIsAuthenticated(true);
+    localStorage.setItem('skillgap_auth_token', token);
+  };
+
   const fetchProfile = async () => {
     try {
       const res = await authAPI.getProfile();
       if (res.status === 'success') {
         setProfile(res.data);
+        setIsAuthenticated(true);
       }
     } catch (err) {
-      console.error("Failed to connect to backend", err);
+      console.error('Failed to connect to backend', err);
+      setProfile(null);
+      setIsAuthenticated(false);
+      localStorage.removeItem('skillgap_auth_token');
     }
   };
 
   useEffect(() => {
+    const storedToken = localStorage.getItem('skillgap_auth_token');
+    if (!storedToken) {
+      setIsAuthenticated(false);
+      setProfile(null);
+      return;
+    }
+
     fetchProfile();
   }, [activePage]);
 
@@ -80,10 +125,20 @@ export default function App() {
         return <QuizView sharedState={sharedState} setActivePage={navigateTo} showToast={showToast} />;
       case 'learn':
         return <Learn sharedState={sharedState} setActivePage={navigateTo} showToast={showToast} />;
+      case 'certificate':
+        return <CertificateView setActivePage={navigateTo} profile={profile} sharedState={sharedState} showToast={showToast} />;
       default:
         return <Dashboard setActivePage={navigateTo} setSharedState={setSharedState} showToast={showToast} />;
     }
   };
+
+  if (!isAuthenticated) {
+    return authMode === 'login' ? (
+      <LoginPage onAuthenticated={handleAuthenticated} switchMode={() => setAuthMode('signup')} />
+    ) : (
+      <SignupPage onAuthenticated={handleAuthenticated} switchMode={() => setAuthMode('login')} />
+    );
+  }
 
   return (
     <div className="flex min-h-screen bg-cyber-dark text-slate-100 grid-bg">
@@ -157,7 +212,7 @@ export default function App() {
             <div className="flex flex-col items-end">
               <div className="flex items-center space-x-0.5 text-cyber-green" title="Career Readiness Score">
                 <Award className="w-3.5 h-3.5" />
-                <span className="text-xs font-extrabold font-mono">{profile.readiness_score}%</span>
+                <span className="text-xs font-extrabold font-mono">{displayedSidebarReadiness}%</span>
               </div>
               <span className="text-[7px] text-gray-500 font-mono">READINESS</span>
             </div>
