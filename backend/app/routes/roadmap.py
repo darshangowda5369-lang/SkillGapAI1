@@ -18,6 +18,10 @@ def get_goals():
         {"title": "Frontend Engineer", "skills": ["HTML5", "CSS3", "JavaScript", "React", "Tailwind CSS", "TypeScript", "Git"]},
         {"title": "Backend Engineer", "skills": ["Python", "Flask", "SQL", "PostgreSQL", "REST APIs", "Docker", "Git", "Redis"]},
         {"title": "Data Scientist", "skills": ["Python", "SQL", "Pandas", "Scikit-Learn", "Machine Learning", "Jupyter", "Data Visualization"]},
+        {"title": "Full-Stack Developer", "skills": ["HTML", "CSS", "JavaScript", "TypeScript", "React", "Node.js", "Express", "SQL", "REST APIs", "Git"]},
+        {"title": "Software Tester", "skills": ["Testing Frameworks", "Test Automation", "Python", "JavaScript", "Selenium", "Git", "Bug Tracking"]},
+        {"title": "Cybersecurity Engineer", "skills": ["Networking", "Linux", "Security Fundamentals", "Cryptography", "Penetration Testing", "Incident Response"]},
+        {"title": "Machine Learning Engineer", "skills": ["Python", "Statistics", "Pandas", "Machine Learning", "Scikit-Learn", "Model Evaluation", "MLOps"]},
         {"title": "DevOps Engineer", "skills": ["Linux", "Docker", "Kubernetes", "CI/CD", "AWS", "Terraform", "Git", "Bash"]}
     ]
     
@@ -36,7 +40,7 @@ def generate_roadmap():
         return jsonify({'status': 'error', 'message': 'Unauthorized'}), 401
         
     data = request.get_json() or {}
-    goal_title = data.get('goal_title')
+    goal_title = (data.get('goal_title') or '').strip()
     
     if not goal_title:
         return jsonify({'status': 'error', 'message': 'Goal title is required'}), 400
@@ -56,8 +60,7 @@ def generate_roadmap():
     
     skills_missing = analysis_result.get('skills_missing', [])
     skills_matched = analysis_result.get('skills_matched', [])
-    # Combined list forms required skills for the goal
-    required_skills = list(set(skills_missing + skills_matched))
+    required_skills = GeminiService.get_role_required_skills(goal_title, user_skills)
     
     # Disable previous active goals for this user
     Goal.query.filter_by(user_id=user.id, is_active=True).update({Goal.is_active: False})
@@ -119,13 +122,7 @@ def get_active_roadmap():
             'data': None
         })
         
-    # Re-calculate score on load to keep it fresh
-    new_score = CareerReadinessAnalyzer.calculate_readiness_score(user.id, active_goal.id)
-    if user.readiness_score != new_score:
-        user.readiness_score = new_score
-        db.session.commit()
-        
-    # Fetch matching/missing skills
+    # Reconcile legacy saved goals with the selected role's full requirements.
     latest_resume = Resume.query.filter_by(user_id=user.id).order_by(Resume.uploaded_at.desc()).first()
     user_skills = []
     if latest_resume and latest_resume.extracted_skills:
@@ -133,16 +130,30 @@ def get_active_roadmap():
             user_skills = json.loads(latest_resume.extracted_skills)
         except Exception:
             user_skills = []
-            
-    user_skills_set = set(s.lower() for s in user_skills)
-    
+
+    req_skills = GeminiService.get_role_required_skills(active_goal.title, user_skills)
     try:
-        req_skills = json.loads(active_goal.required_skills)
-    except Exception:
-        req_skills = []
-        
-    skills_matched = [s for s in req_skills if s.lower() in user_skills_set]
-    skills_missing = [s for s in req_skills if s.lower() not in user_skills_set]
+        stored_required_skills = json.loads(active_goal.required_skills) if active_goal.required_skills else []
+    except (TypeError, ValueError):
+        stored_required_skills = []
+    if stored_required_skills != req_skills:
+        active_goal.required_skills = json.dumps(req_skills)
+        db.session.commit()
+
+    skills_matched = [
+        required for required in req_skills
+        if any(GeminiService.skills_match(required, current) for current in user_skills)
+    ]
+    skills_missing = [
+        required for required in req_skills
+        if not any(GeminiService.skills_match(required, current) for current in user_skills)
+    ]
+
+    # Re-calculate score on load to keep it fresh using the normalized role baseline.
+    new_score = CareerReadinessAnalyzer.calculate_readiness_score(user.id, active_goal.id)
+    if user.readiness_score != new_score:
+        user.readiness_score = new_score
+        db.session.commit()
     
     # Load completed progress steps
     from app.models import Progress
@@ -150,10 +161,32 @@ def get_active_roadmap():
     completed_steps = {p.step_key: p.is_completed for p in progress_records if p.is_completed}
     
     roadmap_dict = roadmap.to_dict()
+    original_steps = []
+    if isinstance(roadmap_dict.get('steps'), dict):
+        original_steps = roadmap_dict['steps'].get('roadmap', [])
+    if not isinstance(original_steps, list):
+        original_steps = []
+    completed_skills = []
+    for step in original_steps:
+        if not isinstance(step, dict) or step.get('step_key') not in completed_steps:
+            continue
+        covered_skills = step.get('skills_covered', [])
+        if isinstance(covered_skills, str):
+            covered_skills = [covered_skills]
+        completed_skills.extend(skill for skill in covered_skills if isinstance(skill, str))
+    if isinstance(roadmap_dict.get('steps'), dict):
+        aligned = GeminiService._align_roadmap_to_gaps(
+            roadmap_dict['steps'], active_goal.title, skills_matched, skills_missing, user_skills
+        )
+        roadmap_dict['steps'] = GeminiService._sanitize_roadmap_result(aligned)
     # Inject completed flag into roadmap steps
     if 'steps' in roadmap_dict and 'roadmap' in roadmap_dict['steps']:
         for step in roadmap_dict['steps']['roadmap']:
-            step['completed'] = completed_steps.get(step.get('step_key'), False)
+            step['completed'] = completed_steps.get(step.get('step_key'), False) or any(
+                GeminiService.skills_match(skill, completed_skill)
+                for skill in step.get('skills_covered', [])
+                for completed_skill in completed_skills
+            )
 
     return jsonify({
         'status': 'success',

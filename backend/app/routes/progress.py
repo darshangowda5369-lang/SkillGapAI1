@@ -248,13 +248,15 @@ def get_dashboard_stats():
     })
 
 
-@progress_bp.route('/certificate/download/<int:certificate_id>', methods=['GET'])
+@progress_bp.route('/certificate/download/<certificate_id>', methods=['GET'])
 def download_certificate(certificate_id):
     user = get_authenticated_user()
     if not user:
         return jsonify({'status': 'error', 'message': 'Unauthorized'}), 401
 
-    certificate = Certificate.query.filter_by(id=certificate_id, user_id=user.id).first()
+    certificate = Certificate.query.filter_by(certificate_id=certificate_id, user_id=user.id).first()
+    if not certificate and str(certificate_id).isdigit():
+        certificate = Certificate.query.filter_by(id=int(certificate_id), user_id=user.id).first()
     if not certificate:
         return jsonify({'status': 'error', 'message': 'Certificate not found'}), 404
 

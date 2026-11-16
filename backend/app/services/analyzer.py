@@ -34,8 +34,11 @@ class CareerReadinessAnalyzer:
             except Exception:
                 user_skills = []
 
-        user_skills_set = set(s.lower() for s in user_skills)
-        matched_count = sum(1 for s in req_skills if s.lower() in user_skills_set)
+        from app.services.gemini_service import GeminiService
+        matched_count = sum(
+            1 for required in req_skills
+            if any(GeminiService.skills_match(required, current) for current in user_skills)
+        )
         total_skills_count = len(req_skills)
         
         # Base Match Score (out of 100)
